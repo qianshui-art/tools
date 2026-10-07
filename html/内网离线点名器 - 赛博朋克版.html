@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎲 内网离线点名器 - 赛博朋克版</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Courier New', monospace;
+    background: #0a0a1a;
+    color: #00ffff;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+  .matrix-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.3; }
+  .matrix-column { position: absolute; top: -100%; font-size: 14px; color: #00ff41; animation: matrixFall linear infinite; text-shadow: 0 0 10px #00ff41; }
+  @keyframes matrixFall { 0% { transform: translateY(-100%); } 100% { transform: translateY(200vh); } }
+  
+  .container { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 30px 20px; }
+  .title { text-align: center; font-size: 2.5em; font-weight: bold; color: #00ffff; text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff; margin-bottom: 10px; }
+  .subtitle { text-align: center; color: #ff00ff; font-size: 1.1em; margin-bottom: 30px; text-shadow: 0 0 10px #ff00ff; }
+  
+  .display-area { background: rgba(0, 20, 40, 0.8); border: 2px solid #00ffff; border-radius: 15px; padding: 40px; text-align: center; margin-bottom: 30px; box-shadow: 0 0 30px rgba(0, 255, 255, 0.3), inset 0 0 30px rgba(0, 255, 255, 0.1); }
+  .current-name { font-size: 4em; font-weight: bold; color: #fff; text-shadow: 0 0 20px #00ffff; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+  .current-name.rolling { animation: nameFlash 0.1s infinite; }
+  @keyframes nameFlash { 0%, 100% { color: #00ffff; } 50% { color: #ff00ff; } }
+  .status-text { color: #888; font-size: 1.2em; margin-top: 10px; }
+  
+  .btn-group { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
+  .btn { padding: 15px 35px; font-size: 1.1em; font-family: 'Courier New', monospace; font-weight: bold; border: 2px solid; border-radius: 8px; cursor: pointer; transition: all 0.3s; letter-spacing: 2px; }
+  .btn-start { background: transparent; color: #00ff41; border-color: #00ff41; box-shadow: 0 0 15px rgba(0, 255, 65, 0.3); }
+  .btn-start:hover:not(:disabled) { background: #00ff41; color: #000; transform: translateY(-2px); }
+  .btn-stop { background: transparent; color: #ff0040; border-color: #ff0040; box-shadow: 0 0 15px rgba(255, 0, 64, 0.3); }
+  .btn-stop:hover:not(:disabled) { background: #ff0040; color: #fff; transform: translateY(-2px); }
+  .btn-reset { background: transparent; color: #ffaa00; border-color: #ffaa00; box-shadow: 0 0 15px rgba(255, 170, 0, 0.3); }
+  .btn-reset:hover:not(:disabled) { background: #ffaa00; color: #000; transform: translateY(-2px); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+  
+  .panel { background: rgba(0, 20, 40, 0.7); border: 1px solid rgba(0, 255, 255, 0.3); border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 0 20px rgba(0, 255, 255, 0.1); }
+  .panel-title { font-size: 1.3em; color: #ff00ff; margin-bottom: 15px; text-shadow: 0 0 10px #ff00ff; }
+  textarea { width: 100%; min-height: 150px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(0, 255, 255, 0.3); border-radius: 8px; padding: 15px; color: #00ffff; font-family: 'Courier New', monospace; font-size: 1em; resize: vertical; outline: none; }
+  textarea:focus { border-color: #00ffff; box-shadow: 0 0 15px rgba(0, 255, 255, 0.2); }
+  
+  .info-row { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; flex-wrap: wrap; gap: 10px; }
+  .info-text { color: #888; font-size: 0.9em; }
+  .info-text span { color: #00ff41; font-weight: bold; }
+  
+  /* 赛博朋克复选框 */
+  .checkbox-container { display: flex; align-items: center; gap: 10px; color: #00ffff; font-size: 0.95em; cursor: pointer; user-select: none; }
+  .checkbox-container input[type="checkbox"] { appearance: none; width: 20px; height: 20px; border: 2px solid #00ffff; border-radius: 4px; background: rgba(0,0,0,0.5); cursor: pointer; position: relative; transition: all 0.3s; }
+  .checkbox-container input[type="checkbox"]:checked { background: #00ffff; box-shadow: 0 0 10px #00ffff; }
+  .checkbox-container input[type="checkbox"]:checked::after { content: '✓'; position: absolute; color: #000; font-size: 14px; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; }
+  
+  .record-list { display: flex; flex-wrap: wrap; gap: 10px; min-height: 50px; }
+  .record-item { background: rgba(0, 255, 65, 0.1); border: 1px solid #00ff41; border-radius: 5px; padding: 8px 15px; color: #00ff41; font-size: 0.95em; animation: recordAppear 0.5s ease; }
+  @keyframes recordAppear { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  .record-empty { color: #555; font-style: italic; }
+  .btn-clear { margin-top: 15px; padding: 10px 25px; background: transparent; color: #ff0040; border: 1px solid #ff0040; border-radius: 5px; cursor: pointer; font-family: 'Courier New', monospace; transition: all 0.3s; }
+  .btn-clear:hover { background: #ff0040; color: #fff; }
+  .footer { text-align: center; color: #555; font-size: 0.85em; margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(0, 255, 255, 0.2); }
+  .footer span { color: #ff00ff; }
+</style>
+</head>
+<body>
+<div class="matrix-bg" id="matrixBg"></div>
+<div class="container">
+  <h1 class="title">🎲 内网离线点名器</h1>
+  <p class="subtitle">// SYSTEM READY - AWAITING COMMAND</p>
+  
+  <div class="display-area">
+    <div class="current-name" id="currentName">准备就绪</div>
+    <div class="status-text" id="statusText">等待开始点名...</div>
+  </div>
+  
+  <div class="btn-group">
+    <button class="btn btn-start" id="btnStart" onclick="startRoll()">▶ 开始点名</button>
+    <button class="btn btn-stop" id="btnStop" onclick="stopRoll()" disabled>■ 停止</button>
+    <button class="btn btn-reset" onclick="resetAll()">↻ 重置所有</button>
+  </div>
+  
+  <div class="panel">
+    <div class="panel-title">▸ 名单设置</div>
+    <textarea id="nameList" placeholder="每行输入一个名字...">张三
+李四
+王五
+赵六
+钱七
+孙八
+周九
+吴十</textarea>
+    <div class="info-row">
+      <div class="info-text">当前名单共 <span id="nameCount">8</span> 人</div>
+      <label class="checkbox-container">
+        <input type="checkbox" id="noRepeat" checked>
+        <span>已点过的人不再重复抽取</span>
+      </label>
+    </div>
+  </div>
+  
+  <div class="panel">
+    <div class="panel-title">▸ 已点名单记录</div>
+    <div class="record-list" id="recordList"><span class="record-empty">暂无记录</span></div>
+    <button class="btn-clear" onclick="clearRecords()">清空记录</button>
+  </div>
+  
+  <div class="footer">本工具由 <span>庆安电子周飞</span> 制作 | 纯内网离线版 | v2.0 Cyberpunk</div>
+</div>
+
+<script>
+  let names = [], remainingNames = [], records = [], rollTimer = null, isRolling = false;
+  
+  function initMatrix() {
+    const bg = document.getElementById('matrixBg');
+    const chars = '01アイウエオカキクケコ';
+    const columns = Math.floor(window.innerWidth / 20);
+    for (let i = 0; i < columns; i++) {
+      const col = document.createElement('div');
+      col.className = 'matrix-column';
+      col.style.left = (i * 20) + 'px';
+      col.style.animationDuration = (Math.random() * 3 + 2) + 's';
+      col.style.animationDelay = (Math.random() * 5) + 's';
+      let text = '';
+      for (let j = 0; j < 20; j++) text += chars[Math.floor(Math.random() * chars.length)] + '<br>';
+      col.innerHTML = text;
+      bg.appendChild(col);
+    }
+  }
+  
+  function updateNameCount() {
+    names = document.getElementById('nameList').value.split('\n').filter(n => n.trim());
+    document.getElementById('nameCount').textContent = names.length;
+  }
+  document.getElementById('nameList').addEventListener('input', updateNameCount);
+  
+  function startRoll() {
+    if (names.length === 0) { alert('请先输入名单！'); return; }
+    const noRepeat = document.getElementById('noRepeat').checked;
+    if (noRepeat) {
+      if (remainingNames.length === 0) remainingNames = [...names];
+    } else {
+      remainingNames = [...names];
+    }
+    isRolling = true;
+    document.getElementById('btnStart').disabled = true;
+    document.getElementById('btnStop').disabled = false;
+    document.getElementById('nameList').disabled = true;
+    document.getElementById('statusText').textContent = '正在随机抽取中...';
+    const nameEl = document.getElementById('currentName');
+    nameEl.classList.add('rolling');
+    rollTimer = setInterval(() => {
+      nameEl.textContent = remainingNames[Math.floor(Math.random() * remainingNames.length)];
+    }, 50);
+  }
+  
+  function stopRoll() {
+    if (!isRolling) return;
+    clearInterval(rollTimer);
+    isRolling = false;
+    const nameEl = document.getElementById('currentName');
+    nameEl.classList.remove('rolling');
+    const randomIndex = Math.floor(Math.random() * remainingNames.length);
+    const selectedName = remainingNames[randomIndex];
+    nameEl.textContent = selectedName;
+    
+    const noRepeat = document.getElementById('noRepeat').checked;
+    if (noRepeat) remainingNames.splice(randomIndex, 1);
+    
+    records.push(selectedName);
+    updateRecords();
+    document.getElementById('statusText').textContent = noRepeat ? `已抽取 ${records.length} 人，剩余 ${remainingNames.length} 人` : `已抽取：${selectedName}`;
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled = true;
+    if (noRepeat && remainingNames.length === 0) {
+      document.getElementById('statusText').textContent = ' 所有人已点完！';
+      document.getElementById('btnStart').disabled = true;
+    }
+  }
+  
+  function updateRecords() {
+    const list = document.getElementById('recordList');
+    list.innerHTML = records.length === 0 ? '<span class="record-empty">暂无记录</span>' : records.map((name, i) => `<span class="record-item">${i + 1}. ${name}</span>`).join('');
+  }
+  
+  function clearRecords() {
+    records = []; remainingNames = [];
+    updateRecords();
+    document.getElementById('currentName').textContent = '准备就绪';
+    document.getElementById('statusText').textContent = '等待开始点名...';
+    document.getElementById('btnStart').disabled = false;
+  }
+  
+  function resetAll() {
+    if (isRolling) { clearInterval(rollTimer); isRolling = false; }
+    records = []; remainingNames = [];
+    updateRecords();
+    document.getElementById('currentName').textContent = '准备就绪';
+    document.getElementById('statusText').textContent = '等待开始点名...';
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled = true;
+    document.getElementById('nameList').disabled = false;
+  }
+  
+  initMatrix();
+  updateNameCount();
+</script>
+</body>
+</html>

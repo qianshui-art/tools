@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎲 内网离线点名器 - 专业版</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+    background-attachment: fixed;
+    color: #333;
+    min-height: 100vh;
+    padding: 40px 20px;
+    position: relative;
+  }
+  body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 50px 50px; pointer-events: none; }
+  .container { max-width: 900px; margin: 0 auto; position: relative; z-index: 1; }
+  
+  .header { text-align: center; margin-bottom: 40px; padding: 30px; background: rgba(255, 255, 255, 0.95); border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+  .title { font-size: 2.2em; font-weight: 700; color: #1e3c72; margin-bottom: 8px; letter-spacing: 2px; }
+  .subtitle { color: #666; font-size: 0.95em; }
+  
+  .main-card { background: #fff; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); overflow: hidden; margin-bottom: 25px; }
+  .card-header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff; padding: 20px 30px; font-size: 1.1em; font-weight: 600; display: flex; align-items: center; gap: 12px; }
+  .card-body { padding: 35px; }
+  
+  .display-section { text-align: center; padding: 50px 40px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; margin-bottom: 30px; position: relative; overflow: hidden; }
+  .display-section::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #1e3c72, #ffd700, #1e3c72); background-size: 200% 100%; animation: shimmer 3s infinite; }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  .current-name { font-size: 3.5em; font-weight: 700; color: #1e3c72; min-height: 90px; display: flex; align-items: center; justify-content: center; margin-bottom: 15px; }
+  .current-name.rolling { animation: nameShake 0.3s ease-in-out; }
+  @keyframes nameShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  
+  .status-bar { display: inline-flex; align-items: center; gap: 10px; background: #fff; padding: 10px 25px; border-radius: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); font-size: 0.95em; color: #666; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #28a745; animation: pulse 2s infinite; }
+  .status-dot.rolling { background: #ffc107; animation: pulse 0.5s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.2); } }
+  
+  .progress-section { margin-bottom: 25px; }
+  .progress-label { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9em; color: #666; font-weight: 500; }
+  .progress-bar { height: 12px; background: #e9ecef; border-radius: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #1e3c72, #2a5298); border-radius: 6px; transition: width 0.5s ease; }
+  
+  .btn-group { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; padding: 25px 35px; background: #f8f9fa; border-top: 1px solid #e9ecef; }
+  .btn { padding: 14px 35px; font-size: 1em; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-start { background: linear-gradient(135deg, #28a745, #20c997); color: #fff; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); }
+  .btn-start:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4); }
+  .btn-stop { background: linear-gradient(135deg, #dc3545, #c82333); color: #fff; box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3); }
+  .btn-stop:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4); }
+  .btn-reset { background: linear-gradient(135deg, #6c757d, #5a6268); color: #fff; box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3); }
+  .btn-reset:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+  
+  textarea { width: 100%; min-height: 150px; border: 2px solid #e9ecef; border-radius: 10px; padding: 15px; font-size: 1em; font-family: inherit; resize: vertical; outline: none; transition: all 0.3s; background: #fff; }
+  textarea:focus { border-color: #2a5298; box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.1); }
+  
+  .info-row { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding: 12px 15px; background: #f8f9fa; border-radius: 8px; font-size: 0.9em; flex-wrap: wrap; gap: 10px; }
+  .info-item { display: flex; align-items: center; gap: 8px; color: #666; }
+  .info-value { font-weight: 700; color: #1e3c72; font-size: 1.1em; }
+  
+  /* 专业版复选框 */
+  .checkbox-container { display: flex; align-items: center; gap: 10px; color: #333; font-size: 0.95em; cursor: pointer; user-select: none; font-weight: 500; }
+  .checkbox-container input[type="checkbox"] { appearance: none; width: 20px; height: 20px; border: 2px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; position: relative; transition: all 0.2s; }
+  .checkbox-container input[type="checkbox"]:checked { background: #1e3c72; border-color: #1e3c72; }
+  .checkbox-container input[type="checkbox"]:checked::after { content: '✓'; position: absolute; color: #fff; font-size: 12px; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; }
+  
+  .record-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+  .record-tag { background: linear-gradient(135deg, #1e3c72, #2a5298); color: #fff; padding: 10px 15px; border-radius: 8px; font-size: 0.9em; text-align: center; animation: slideIn 0.4s ease; box-shadow: 0 2px 8px rgba(30, 60, 114, 0.2); }
+  @keyframes slideIn { 0% { opacity: 0; transform: translateY(-10px); } 100% { opacity: 1; transform: translateY(0); } }
+  .record-empty { color: #999; font-style: italic; text-align: center; padding: 30px; grid-column: 1 / -1; }
+  .btn-clear { margin-top: 20px; padding: 10px 25px; background: transparent; color: #dc3545; border: 2px solid #dc3545; border-radius: 6px; cursor: pointer; font-size: 0.9em; font-weight: 600; transition: all 0.3s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-clear:hover { background: #dc3545; color: #fff; }
+  .footer { text-align: center; color: rgba(255,255,255,0.8); font-size: 0.85em; padding: 20px; margin-top: 20px; }
+  .footer span { color: #ffd700; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1 class="title"> 内网离线点名器</h1>
+    <p class="subtitle">Professional Edition · 专业高效 · 安全可靠</p>
+  </div>
+  
+  <div class="main-card">
+    <div class="card-header"><span>📊</span> 点名控制台</div>
+    <div class="card-body">
+      <div class="display-section">
+        <div class="current-name" id="currentName">准备就绪</div>
+        <div class="status-bar">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">等待开始点名...</span>
+        </div>
+      </div>
+      
+      <div class="progress-section">
+        <div class="progress-label">
+          <span>点名进度</span>
+          <span><span id="completedCount">0</span> / <span id="totalCount">0</span></span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%"></div></div>
+      </div>
+      
+      <div class="btn-group">
+        <button class="btn btn-start" id="btnStart" onclick="startRoll()"><span>▶</span> 开始点名</button>
+        <button class="btn btn-stop" id="btnStop" onclick="stopRoll()" disabled><span>■</span> 停止</button>
+        <button class="btn btn-reset" onclick="resetAll()"><span>↻</span> 重置所有</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="main-card">
+    <div class="card-header"><span>📝</span> 名单管理</div>
+    <div class="card-body">
+      <textarea id="nameList" placeholder="请输入名单，每行一个名字...">张三
+李四
+王五
+赵六
+钱七
+孙八
+周九
+吴十</textarea>
+      <div class="info-row">
+        <div class="info-item"><span>📋</span> 总人数：<span class="info-value" id="nameCount">8</span></div>
+        <div class="info-item"><span>✅</span> 已点名：<span class="info-value" id="recordedCount">0</span></div>
+        <div class="info-item"><span></span> 剩余：<span class="info-value" id="remainingCount">8</span></div>
+        <label class="checkbox-container">
+          <input type="checkbox" id="noRepeat" checked>
+          <span>已点过的人不再重复抽取</span>
+        </label>
+      </div>
+    </div>
+  </div>
+  
+  <div class="main-card">
+    <div class="card-header"><span>📜</span> 点名记录</div>
+    <div class="card-body">
+      <div class="record-grid" id="recordList"><div class="record-empty">暂无点名记录</div></div>
+      <button class="btn-clear" onclick="clearRecords()"><span>🗑</span> 清空记录</button>
+    </div>
+  </div>
+  
+  <div class="footer">本工具由 <span>庆安电子周飞</span> 制作 | 纯内网离线版 | v3.0 Professional</div>
+</div>
+
+<script>
+  let names = [], remainingNames = [], records = [], rollTimer = null, isRolling = false;
+  
+  function updateStats() {
+    names = document.getElementById('nameList').value.split('\n').filter(n => n.trim());
+    const total = names.length;
+    const completed = records.length;
+    const remaining = remainingNames.length || total - completed;
+    document.getElementById('nameCount').textContent = total;
+    document.getElementById('recordedCount').textContent = completed;
+    document.getElementById('remainingCount').textContent = remaining;
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('completedCount').textContent = completed;
+    const progress = total > 0 ? (completed / total) * 100 : 0;
+    document.getElementById('progressFill').style.width = progress + '%';
+  }
+  document.getElementById('nameList').addEventListener('input', updateStats);
+  
+  function startRoll() {
+    if (names.length === 0) { alert('请先输入名单！'); return; }
+    const noRepeat = document.getElementById('noRepeat').checked;
+    if (noRepeat) {
+      if (remainingNames.length === 0) remainingNames = [...names];
+    } else {
+      remainingNames = [...names];
+    }
+    isRolling = true;
+    document.getElementById('btnStart').disabled = true;
+    document.getElementById('btnStop').disabled = false;
+    document.getElementById('nameList').disabled = true;
+    document.getElementById('statusText').textContent = '正在随机抽取中...';
+    document.getElementById('statusDot').classList.add('rolling');
+    const nameEl = document.getElementById('currentName');
+    nameEl.classList.add('rolling');
+    rollTimer = setInterval(() => {
+      nameEl.textContent = remainingNames[Math.floor(Math.random() * remainingNames.length)];
+    }, 50);
+  }
+  
+  function stopRoll() {
+    if (!isRolling) return;
+    clearInterval(rollTimer);
+    isRolling = false;
+    const nameEl = document.getElementById('currentName');
+    nameEl.classList.remove('rolling');
+    const randomIndex = Math.floor(Math.random() * remainingNames.length);
+    const selectedName = remainingNames[randomIndex];
+    nameEl.textContent = selectedName;
+    
+    const noRepeat = document.getElementById('noRepeat').checked;
+    if (noRepeat) remainingNames.splice(randomIndex, 1);
+    
+    records.push(selectedName);
+    updateRecords();
+    updateStats();
+    document.getElementById('statusText').textContent = noRepeat ? `抽取成功 - ${selectedName}` : `抽取成功 - ${selectedName} (允许重复)`;
+    document.getElementById('statusDot').classList.remove('rolling');
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled = true;
+    if (noRepeat && remainingNames.length === 0) {
+      document.getElementById('statusText').textContent = '✓ 所有人已点完';
+      document.getElementById('statusDot').style.background = '#28a745';
+      document.getElementById('btnStart').disabled = true;
+    }
+  }
+  
+  function updateRecords() {
+    const list = document.getElementById('recordList');
+    list.innerHTML = records.length === 0 ? '<div class="record-empty">暂无点名记录</div>' : records.map((name, i) => `<div class="record-tag">${i + 1}. ${name}</div>`).join('');
+  }
+  
+  function clearRecords() {
+    if (records.length === 0) return;
+    if (!confirm('确定要清空所有记录吗？')) return;
+    records = []; remainingNames = [];
+    updateRecords(); updateStats();
+    document.getElementById('currentName').textContent = '准备就绪';
+    document.getElementById('statusText').textContent = '等待开始点名...';
+    document.getElementById('statusDot').style.background = '#28a745';
+    document.getElementById('statusDot').classList.remove('rolling');
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled = true;
+    document.getElementById('nameList').disabled = false;
+  }
+  
+  function resetAll() {
+    if (isRolling) { clearInterval(rollTimer); isRolling = false; }
+    records = []; remainingNames = [];
+    updateRecords(); updateStats();
+    document.getElementById('currentName').textContent = '准备就绪';
+    document.getElementById('statusText').textContent = '等待开始点名...';
+    document.getElementById('statusDot').style.background = '#28a745';
+    document.getElementById('statusDot').classList.remove('rolling');
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled = true;
+    document.getElementById('nameList').disabled = false;
+  }
+  updateStats();
+</script>
+</body>
+</html>

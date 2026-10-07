@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>软考论文写作助手 · 摘要 / 正文字数实时统计与 DOCX 导出</title>
+<style>
+  :root{
+    --bg:#f5f6f8;
+    --card:#ffffff;
+    --line:#e3e6ec;
+    --line-strong:#cfd5df;
+    --text:#1f2329;
+    --text-2:#5a6270;
+    --text-3:#8b93a1;
+    --blue:#185fa5;
+    --blue-bg:#e6f1fb;
+    --blue-line:#b5d4f4;
+    --teal:#0f6e56;
+    --teal-bg:#e1f5ee;
+    --teal-line:#9fe1cb;
+    --amber:#854f0b;
+    --amber-bg:#faeeda;
+    --amber-line:#fac775;
+    --gray:#5f5e5a;
+    --gray-bg:#f1efe8;
+    --gray-line:#b4b2a9;
+    --red:#a32d2d;
+    --red-bg:#fbe9e9;
+    --red-line:#f0b5b5;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    padding:26px 20px 72px;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Source Han Sans SC",system-ui,sans-serif;
+    font-size:15px;
+    line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  header{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:22px 28px;
+    margin-bottom:16px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:18px;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .eyebrow{
+    display:inline-block;
+    font-size:12px;
+    letter-spacing:.08em;
+    color:var(--blue);
+    background:var(--blue-bg);
+    border:1px solid var(--blue-line);
+    border-radius:999px;
+    padding:3px 12px;
+    margin-bottom:10px;
+  }
+  h1{font-size:22px;font-weight:700;margin:0 0 6px;letter-spacing:.01em;}
+  header p{margin:0;color:var(--text-2);font-size:13.5px;}
+
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;}
+  button{
+    font-family:inherit;
+    font-size:13.5px;
+    font-weight:600;
+    padding:9px 16px;
+    border-radius:9px;
+    border:1px solid var(--line-strong);
+    background:#fff;
+    color:var(--text);
+    cursor:pointer;
+    transition:.15s;
+    white-space:nowrap;
+  }
+  button:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-bg);}
+  button.primary{background:var(--blue);border-color:var(--blue);color:#fff;}
+  button.primary:hover{background:#12487d;border-color:#12487d;color:#fff;}
+  button.ghost{background:transparent;border-color:transparent;color:var(--text-2);}
+  button.ghost:hover{background:var(--gray-bg);color:var(--text);}
+  button:active{transform:translateY(1px);}
+
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 288px;gap:16px;align-items:start;}
+  @media (max-width:960px){ .layout{grid-template-columns:1fr;} }
+
+  section.card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px 24px 22px;
+    margin-bottom:16px;
+  }
+  .card-head{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+  .card-head h2{
+    font-size:16px;
+    font-weight:700;
+    margin:0;
+    padding-left:11px;
+    border-left:3px solid var(--blue);
+    line-height:1.25;
+  }
+  .card-head .hint{font-size:12.5px;color:var(--text-3);}
+  .card-head .count{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;}
+  .count.ok{color:var(--teal);}
+  .count.under{color:var(--amber);}
+  .count.over{color:var(--red);}
+  .count.idle{color:var(--text-3);}
+
+  label.field{display:block;font-size:13px;color:var(--text-2);margin-bottom:7px;font-weight:600;}
+  input[type=text],textarea{
+    width:100%;
+    font-family:inherit;
+    font-size:15px;
+    line-height:1.9;
+    color:var(--text);
+    background:#fcfdfe;
+    border:1px solid var(--line-strong);
+    border-radius:9px;
+    padding:12px 14px;
+    outline:none;
+    transition:.15s;
+    resize:vertical;
+  }
+  input[type=text]:focus,textarea:focus{
+    border-color:var(--blue);
+    background:#fff;
+    box-shadow:0 0 0 3px rgba(24,95,165,.12);
+  }
+  textarea{
+    min-height:200px;
+    display:block;
+    overflow:auto;
+  }
+  #abstract{min-height:120px;}
+  #body{min-height:360px;}
+
+  .meter{margin-top:11px;}
+  .bar{
+    position:relative;
+    height:8px;
+    border-radius:999px;
+    background:#eceff4;
+    overflow:hidden;
+  }
+  .bar .zone{position:absolute;top:0;bottom:0;background:var(--teal-bg);border-left:1px solid var(--teal-line);border-right:1px solid var(--teal-line);}
+  .bar .fill{position:absolute;top:0;bottom:0;left:0;width:0;border-radius:999px;background:var(--blue);transition:width .12s linear,background .2s;}
+  .bar .fill.ok{background:var(--teal);}
+  .bar .fill.under{background:var(--amber-line);}
+  .bar .fill.over{background:var(--red);}
+  .bar .fill.idle{background:var(--line-strong);}
+  .meter-foot{display:flex;justify-content:space-between;gap:10px;margin-top:7px;font-size:12.5px;color:var(--text-2);flex-wrap:wrap;}
+  .meter-foot .state{font-weight:700;}
+  .state.ok{color:var(--teal);}
+  .state.under{color:var(--amber);}
+  .state.over{color:var(--red);}
+  .state.idle{color:var(--text-3);}
+  .meter-foot .meta{color:var(--text-3);}
+
+  .pill{
+    display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;
+    border:1px solid var(--line);background:var(--gray-bg);color:var(--gray);
+  }
+  .pill.ok{background:var(--teal-bg);border-color:var(--teal-line);color:var(--teal);}
+  .pill.under{background:var(--amber-bg);border-color:var(--amber-line);color:var(--amber);}
+  .pill.over{background:var(--red-bg);border-color:var(--red-line);color:var(--red);}
+
+  /* sidebar */
+  .side{position:sticky;top:20px;}
+  @media (max-width:960px){ .side{position:static;} }
+  .side section.card{padding:18px 20px;}
+  .side h3{font-size:14px;font-weight:700;margin:0 0 12px;padding-left:10px;border-left:3px solid var(--blue);line-height:1.2;}
+  .stat-row{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--line);}
+  .stat-row:last-child{border-bottom:none;}
+  .stat-row b{font-variant-numeric:tabular-nums;font-size:14px;}
+
+  ul.check{list-style:none;margin:0;padding:0;font-size:13px;}
+  ul.check li{display:flex;gap:9px;align-items:flex-start;padding:7px 0;color:var(--text-2);line-height:1.6;}
+  ul.check li .box{
+    flex:0 0 17px;width:17px;height:17px;border-radius:5px;border:1.5px solid var(--line-strong);
+    background:#fff;margin-top:3px;display:flex;align-items:center;justify-content:center;
+    font-size:11px;color:#fff;line-height:1;
+  }
+  ul.check li.done .box{background:var(--teal);border-color:var(--teal);}
+  ul.check li.done{color:var(--text);}
+
+  details{margin-top:4px;}
+  details summary{
+    cursor:pointer;font-size:13px;font-weight:600;color:var(--blue);
+    padding:6px 0;list-style:none;outline:none;
+  }
+  details summary::-webkit-details-marker{display:none;}
+  details summary::before{content:"▸ ";display:inline-block;transition:.15s;}
+  details[open] summary::before{transform:rotate(90deg);}
+  details .inner{font-size:12.5px;color:var(--text-2);line-height:1.8;padding:2px 0 6px;}
+  details .inner b{color:var(--text);}
+  details .inner ol{margin:6px 0 0;padding-left:20px;}
+  details .inner li{margin-bottom:4px;}
+
+  .switch{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text-2);cursor:pointer;user-select:none;}
+  .switch input{appearance:none;width:36px;height:20px;border-radius:999px;background:#d7dbe3;position:relative;cursor:pointer;transition:.2s;margin:0;flex:0 0 auto;}
+  .switch input:checked{background:var(--teal);}
+  .switch input::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s;}
+  .switch input:checked::after{left:18px;}
+
+  .save-hint{font-size:12px;color:var(--text-3);}
+  .save-hint b{color:var(--teal);}
+
+  /* 倒计时 */
+  .timer-card{border-color:var(--blue-line);background:linear-gradient(180deg,#f7fbff,#fff 62%);}
+  .timer-display{
+    font-size:40px;font-weight:700;line-height:1.1;text-align:center;
+    font-variant-numeric:tabular-nums;letter-spacing:.02em;
+    padding:2px 0 8px;color:var(--blue);
+  }
+  .timer-display.idle{color:var(--text-3);}
+  .timer-display.warn{color:var(--amber);}
+  .timer-display.danger{color:var(--red);}
+  .timer-display.done{color:var(--red);animation:timerPulse 1s ease-in-out infinite;}
+  @keyframes timerPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .timer-state{font-size:12.5px;color:var(--text-2);text-align:center;margin-top:9px;line-height:1.6;}
+  .timer-state.done{color:var(--red);font-weight:700;}
+  .timer-btns{display:flex;gap:8px;margin-top:13px;}
+  .timer-btns button{flex:1;padding:10px 8px;}
+  .timer-opts{margin-top:13px;padding-top:12px;border-top:1px dashed var(--line);}
+  .timer-min{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);}
+  .timer-min input{
+    width:66px;font-family:inherit;font-size:13px;font-weight:600;color:var(--text);
+    border:1px solid var(--line-strong);border-radius:7px;padding:5px 8px;text-align:center;
+    font-variant-numeric:tabular-nums;outline:none;background:#fcfdfe;
+  }
+  .timer-min input:focus{border-color:var(--blue);background:#fff;}
+  .timer-min input:disabled{background:var(--gray-bg);color:var(--text-3);}
+
+  #toast{
+    position:fixed;left:50%;bottom:34px;transform:translate(-50%,20px);
+    background:#1f2329;color:#fff;font-size:13.5px;font-weight:600;
+    padding:11px 20px;border-radius:10px;opacity:0;pointer-events:none;
+    transition:.24s;box-shadow:0 8px 26px rgba(0,0,0,.22);z-index:99;
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0);}
+  #toast.err{background:#a32d2d;}
+
+  .empty-tip{font-size:12.5px;color:var(--text-3);margin-top:8px;}
+
+  @media print{
+    body{background:#fff;padding:0;}
+    header,.toolbar,.side,button{display:none !important;}
+    section.card{border:none;box-shadow:none;padding:0;}
+    .layout{display:block;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <span class="eyebrow">软考 · 论文写作</span>
+      <h1>软考论文写作助手</h1>
+      <p>摘要 1–300 字、正文 2000–2500 字，两部分分开实时统计；限时 120 分钟倒计时（点击「开始」才计时），支持本地草稿与一键导出 DOCX。</p>
+    </div>
+    <div class="toolbar">
+      <button class="primary" id="btnExport">导出 DOCX</button>
+      <button id="btnSave">保存草稿</button>
+      <button id="btnCopy">复制全文</button>
+      <button class="ghost" id="btnClear">清空</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- ============ 主编辑区 ============ -->
+    <main>
+      <section class="card">
+        <div class="card-head">
+          <h2>论文标题</h2>
+          <span class="hint">建议 20 字以内，体现「技术 + 项目」</span>
+        </div>
+        <input type="text" id="title" placeholder="例：基于微服务架构的高并发订单系统设计与实现" maxlength="60" autocomplete="off">
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>摘要</h2>
+          <span class="hint">要求 1–300 字</span>
+          <span class="count idle" id="absCount">0 / 300</span>
+        </div>
+        <textarea id="abstract" placeholder="示例结构：本文以……项目为背景，论述了……（技术/方法）的应用。项目于……年……月启动，……年……月上线。本文重点阐述了……（三方面），并说明了……（效果：可用性/性能/安全/成本）。项目实施后……" spellcheck="false"></textarea>
+        <div class="meter">
+          <div class="bar"><div class="zone" id="absZone"></div><div class="fill idle" id="absFill"></div></div>
+          <div class="meter-foot">
+            <span class="state idle" id="absState">尚未填写</span>
+            <span class="meta" id="absMeta">汉字与标点均计入，不含空格与换行</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>正文</h2>
+          <span class="hint">要求 2000–2500 字</span>
+          <span class="count idle" id="bodyCount">0 / 2500</span>
+        </div>
+        <textarea id="body" placeholder="建议按「项目背景 → 技术方案与实施过程 → 问题与解决 → 效果评价 → 总结」展开，用具体数据与个人职责支撑论点。" spellcheck="false"></textarea>
+        <div class="meter">
+          <div class="bar"><div class="zone" id="bodyZone"></div><div class="fill idle" id="bodyFill"></div></div>
+          <div class="meter-foot">
+            <span class="state idle" id="bodyState">尚未填写</span>
+            <span class="meta" id="bodyMeta">汉字与标点均计入，不含空格与换行</span>
+          </div>
+        </div>
+        <div class="empty-tip" id="bodyTip"></div>
+      </section>
+    </main>
+
+    <!-- ============ 侧栏 ============ -->
+    <aside class="side">
+      <section class="card timer-card">
+        <h3>限时写作</h3>
+        <div class="timer-display idle" id="timerDisplay">120:00</div>
+        <div class="bar"><div class="fill idle" id="timerFill"></div></div>
+        <div class="timer-state" id="timerState">未开始 · 点击「开始」后才计时</div>
+        <div class="timer-btns">
+          <button class="primary" id="btnTimer">开始</button>
+          <button id="btnTimerReset">重置</button>
+        </div>
+        <div class="timer-opts">
+          <div class="timer-min">
+            <span>时长</span>
+            <input type="number" id="timerMin" value="120" min="1" max="600" step="5" autocomplete="off">
+            <span>分钟</span>
+          </div>
+          <label class="switch" style="margin-top:11px;"><input type="checkbox" id="timerSound" checked><span>结束时提示音</span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>写作进度</h3>
+        <div class="stat-row"><span>摘要字数</span><b id="sAbs">0 / 300</b></div>
+        <div class="stat-row"><span>正文字数</span><b id="sBody">0 / 2500</b></div>
+        <div class="stat-row"><span>正文段落</span><b id="sPara">0</b></div>
+        <div class="stat-row"><span>合计字数</span><b id="sTotal">0</b></div>
+        <div class="stat-row"><span>完整度</span><b id="sPct">0%</b></div>
+      </section>
+
+      <section class="card">
+        <h3>提交前自查</h3>
+        <ul class="check">
+          <li id="ckTitle"><span class="box">✓</span><span>已填写论文标题</span></li>
+          <li id="ckAbs"><span class="box">✓</span><span>摘要落在 1–300 字</span></li>
+          <li id="ckBody"><span class="box">✓</span><span>正文落在 2000–2500 字</span></li>
+          <li id="ckPara"><span class="box">✓</span><span>正文不少于 3 个自然段</span></li>
+        </ul>
+        <div style="margin-top:14px;padding-top:13px;border-top:1px dashed var(--line);">
+          <label class="switch"><input type="checkbox" id="hardLimit"><span>超上限时禁止继续输入</span></label>
+        </div>
+        <div class="save-hint" style="margin-top:12px;">本地草稿：<b id="saveState">尚未保存</b></div>
+      </section>
+
+      <section class="card">
+        <h3>写作参考</h3>
+        <details open>
+          <summary>摘要要素</summary>
+          <div class="inner">
+            <b>背景 → 方法 → 过程 → 结果</b>四要素齐全，一段成文，不出现「我」以外的虚词堆砌，尽量落到可量化的结果上。
+          </div>
+        </details>
+        <details>
+          <summary>正文常见结构</summary>
+          <div class="inner">
+            <ol>
+              <li><b>项目背景</b>：规模、业务特点、你的角色与职责</li>
+              <li><b>技术选型</b>：为什么选它，对比了哪些方案</li>
+              <li><b>实施过程</b>：分阶段的关键动作与产出</li>
+              <li><b>难点与解决</b>：2–3 个具体问题，讲清排查与取舍</li>
+              <li><b>效果评价</b>：性能、可用性、成本等指标变化</li>
+              <li><b>总结</b>：不足与后续改进方向</li>
+            </ol>
+          </div>
+        </details>
+        <details>
+          <summary>字数口径说明</summary>
+          <div class="inner">
+            统计规则：去除全部空格、换行与制表符后的字符数，<b>汉字、数字、英文、标点均计入</b>，与多数阅卷口径一致。
+          </div>
+        </details>
+        <details>
+          <summary>快捷键</summary>
+          <div class="inner">
+            <b>Ctrl + S</b> 保存草稿 · <b>Ctrl + Shift + S</b> 导出 DOCX · 编辑过程中自动保存。
+          </div>
+        </details>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================= 配置 ================= */
+  var RULES = {
+    abs:  { min: 1,    max: 300,  label: "摘要" },
+    body: { min: 2000, max: 2500, label: "正文" }
+  };
+  var STORE_KEY = "rk_essay_draft_v1";
+
+  var $ = function(id){ return document.getElementById(id); };
+  var elTitle = $("title"), elAbs = $("abstract"), elBody = $("body");
+  var elHard = $("hardLimit");
+  var lastSaved = "";
+
+  /* ================= 字数统计 ================= */
+  function countChars(text){
+    if(!text) return 0;
+    return text.replace(/\s/g, "").length;
+  }
+  function countParas(text){
+    if(!text) return 0;
+    return text.split(/\r?\n/).filter(function(s){ return s.trim().length > 0; }).length;
+  }
+  function trimToMax(text, max){
+    if(countChars(text) <= max) return text;
+    var arr = text.split("");
+    var c = countChars(text);
+    for(var i = arr.length - 1; i >= 0 && c > max; i--){
+      if(!/\s/.test(arr[i])){ arr[i] = ""; c--; }
+    }
+    return arr.join("");
+  }
+
+  function evaluate(key, n){
+    var r = RULES[key];
+    if(n === 0) return { cls: "idle", state: "尚未填写", msg: "待填写" };
+    if(n < r.min){
+      return { cls: "under", state: "偏少", msg: "还差 " + (r.min - n) + " 字达到下限" };
+    }
+    if(n <= r.max){
+      return { cls: "ok", state: "已达标", msg: "处于 " + r.min + "–" + r.max + " 字区间内" };
+    }
+    return { cls: "over", state: "超出上限", msg: "需精简 " + (n - r.max) + " 字" };
+  }
+
+  /* ================= 渲染 ================= */
+  function paint(cfg){
+    var key = cfg.key, text = cfg.textarea.value, r = RULES[key];
+    var n = countChars(text);
+    var ev = evaluate(key, n);
+    var pct = Math.min(100, n / r.max * 100);
+
+    cfg.input.value = n;
+    cfg.count.textContent = n + " / " + r.max;
+    cfg.count.className = "count " + ev.cls;
+    cfg.fill.style.width = pct.toFixed(2) + "%";
+    cfg.fill.className = "fill " + ev.cls;
+    cfg.state.className = "state " + ev.cls;
+    cfg.state.textContent = ev.state + " · " + ev.msg;
+    // 达标区间带
+    cfg.zone.style.left = (r.min / r.max * 100) + "%";
+    cfg.zone.style.width = ((r.max - r.min) / r.max * 100) + "%";
+  }
+
+  var ABS_UI = { key:"abs", textarea:elAbs, count:$("absCount"), fill:$("absFill"), zone:$("absZone"), state:$("absState"), input:$("sAbs") };
+  var BODY_UI= { key:"body", textarea:elBody, count:$("bodyCount"), fill:$("bodyFill"), zone:$("bodyZone"), state:$("bodyState"), input:$("sBody") };
+
+  function refresh(){
+    var a = countChars(elAbs.value), b = countChars(elBody.value);
+    paint(ABS_UI);
+    paint(BODY_UI);
+
+    var paras = countParas(elBody.value);
+    $("sBody").textContent = b + " / " + RULES.body.max;
+    $("sAbs").textContent = a + " / " + RULES.abs.max;
+    $("sPara").textContent = paras;
+    $("sTotal").textContent = a + b;
+
+    var p1 = a / RULES.abs.max, p2 = b / RULES.body.max;
+    var overall = Math.min(1, (p1 + p2) / 2);
+    $("sPct").textContent = Math.round(overall * 100) + "%";
+
+    // 自查清单
+    setCheck("ckTitle", elTitle.value.trim().length > 0);
+    setCheck("ckAbs", a >= RULES.abs.min && a <= RULES.abs.max);
+    setCheck("ckBody", b >= RULES.body.min && b <= RULES.body.max);
+    setCheck("ckPara", paras >= 3);
+
+    // 正文提示
+    var tip = "";
+    if(b === 0){
+      tip = "参考写法：先交代项目规模与你的职责，再分点讲清技术方案与实施过程，最后用数据评价效果。";
+    } else if(b < RULES.body.min){
+      tip = "距离下限还差 " + (RULES.body.min - b) + " 字，可补充「难点排查过程」或「效果数据」的细节。";
+    } else if(b > RULES.body.max){
+      tip = "已超出上限 " + (b - RULES.body.max) + " 字，建议删减重复表述与铺垫性文字。";
+    } else {
+      tip = "字数已达标，注意论点是否都有具体事例和数据支撑。";
+    }
+    $("bodyTip").textContent = tip;
+  }
+
+  function setCheck(id, ok){
+    var li = $(id);
+    if(ok) li.classList.add("done"); else li.classList.remove("done");
+  }
+
+  /* ================= 草稿存取 ================= */
+  function collect(){
+    return { title: elTitle.value, abs: elAbs.value, body: elBody.value, hard: elHard.checked, t: Date.now() };
+  }
+  function snapshot(){ return JSON.stringify(collect()); }
+
+  function saveDraft(silent){
+    try{
+      var data = collect();
+      localStorage.setItem(STORE_KEY, JSON.stringify(data));
+      lastSaved = snapshot();
+      var d = new Date(data.t);
+      var p = function(x){ return x < 10 ? "0" + x : "" + x; };
+      $("saveState").textContent = "已保存 " + p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+      if(!silent) toast("草稿已保存到本机浏览器");
+      return true;
+    }catch(e){
+      if(!silent) toast("保存失败：浏览器存储不可用", true);
+      return false;
+    }
+  }
+
+  function restore(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      if(!raw) return false;
+      var d = JSON.parse(raw);
+      elTitle.value = d.title || "";
+      elAbs.value = d.abs || "";
+      elBody.value = d.body || "";
+      elHard.checked = !!d.hard;
+      lastSaved = snapshot();
+      if(d.t){
+        var dt = new Date(d.t);
+        var p = function(x){ return x < 10 ? "0" + x : "" + x; };
+        $("saveState").textContent = "已恢复 " + dt.getFullYear() + "-" + p(dt.getMonth()+1) + "-" + p(dt.getDate()) +
+          " " + p(dt.getHours()) + ":" + p(dt.getMinutes());
+      }
+      return true;
+    }catch(e){ return false; }
+  }
+
+  var autoTimer = null;
+  function scheduleAutoSave(){
+    if(snapshot() === lastSaved) return;
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(function(){ saveDraft(true); }, 1500);
+  }
+
+  /* ================= DOCX 生成（纯前端，无外部依赖） ================= */
+  var CRC_TABLE = (function(){
+    var t = new Uint32Array(256);
+    for(var n = 0; n < 256; n++){
+      var c = n;
+      for(var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(bytes){
+    var c = 0xFFFFFFFF;
+    for(var i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function dosDateTime(d){
+    var y = Math.max(1980, d.getFullYear());
+    return {
+      time: (d.getHours() << 11) | (d.getMinutes() << 5) | Math.floor(d.getSeconds() / 2),
+      date: ((y - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()
+    };
+  }
+
+  // 生成 ZIP（store 方式，无需压缩库）
+  function makeZip(entries){
+    var enc = new TextEncoder();
+    var now = new Date(), dt = dosDateTime(now);
+    var local = [], central = [], offset = 0;
+
+    entries.forEach(function(f){
+      var name = enc.encode(f.name);
+      var data = (f.data instanceof Uint8Array) ? f.data : enc.encode(f.data);
+      var crc = crc32(data);
+
+      var lh = new Uint8Array(30 + name.length);
+      var lv = new DataView(lh.buffer);
+      lv.setUint32(0, 0x04034b50, true);
+      lv.setUint16(4, 20, true);
+      lv.setUint16(6, 0x0800, true);
+      lv.setUint16(8, 0, true);
+      lv.setUint16(10, dt.time, true);
+      lv.setUint16(12, dt.date, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, data.length, true);
+      lv.setUint32(22, data.length, true);
+      lv.setUint16(26, name.length, true);
+      lv.setUint16(28, 0, true);
+      lh.set(name, 30);
+
+      var ch = new Uint8Array(46 + name.length);
+      var cv = new DataView(ch.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, dt.time, true);
+      cv.setUint16(14, dt.date, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, data.length, true);
+      cv.setUint32(24, data.length, true);
+      cv.setUint16(28, name.length, true);
+      cv.setUint32(42, offset, true);
+      ch.set(name, 46);
+
+      local.push(lh, data);
+      central.push(ch);
+      offset += lh.length + data.length;
+    });
+
+    var centralSize = central.reduce(function(s, c){ return s + c.length; }, 0);
+    var eocd = new Uint8Array(22);
+    var ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, entries.length, true);
+    ev.setUint16(10, entries.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+
+    return new Blob(local.concat(central, [eocd]), { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  }
+
+  function esc(s){
+    return String(s)
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  // 段落：size 为磅值，indent 是否首行缩进两字
+  function para(text, opt){
+    opt = opt || {};
+    var rpr = '<w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:eastAsia="' +
+      (opt.font || "宋体") + '"/>' +
+      (opt.bold ? '<w:b/><w:bCs/>' : '') +
+      '<w:sz w:val="' + (opt.size * 2) + '"/><w:szCs w:val="' + (opt.size * 2) + '"/></w:rPr>';
+    // 注意：OOXML 的 w:pPr 子元素必须按 schema 序列出现：spacing -> ind -> jc -> rPr
+    var ppr = '<w:pPr>' +
+      '<w:spacing w:line="360" w:lineRule="auto" w:before="0" w:after="0"/>' +
+      (opt.indent ? '<w:ind w:firstLineChars="200" w:firstLine="480"/>' : '') +
+      (opt.align ? '<w:jc w:val="' + opt.align + '"/>' : '') +
+      '<w:rPr><w:sz w:val="' + (opt.size * 2) + '"/></w:rPr></w:pPr>';
+    if(text === "") return "<w:p>" + ppr + "</w:p>";
+    return "<w:p>" + ppr + "<w:r>" + rpr + "<w:t xml:space=\"preserve\">" + esc(text) + "</w:t></w:r></w:p>";
+  }
+
+  function buildDocx(title, absText, bodyText){
+    var now = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+    var t = title || "软考论文";
+
+    var doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+      '<w:body>';
+    doc += para(t, { size: 16, bold: true, align: "center", font: "黑体" });
+    doc += para("", { size: 12 });
+
+    doc += para("摘要", { size: 14, bold: true, font: "黑体" });
+    var absLines = String(absText || "").replace(/\r\n?/g, "\n").split("\n").filter(function(s){ return s.trim(); });
+    if(absLines.length === 0) absLines = ["（未填写）"];
+    absLines.forEach(function(l){ doc += para(l, { size: 12, indent: true }); });
+
+    doc += para("", { size: 12 });
+    doc += para("正文", { size: 14, bold: true, font: "黑体" });
+    var bodyLines = String(bodyText || "").replace(/\r\n?/g, "\n").split("\n").filter(function(s){ return s.trim(); });
+    if(bodyLines.length === 0) bodyLines = ["（未填写）"];
+    bodyLines.forEach(function(l){ doc += para(l, { size: 12, indent: true }); });
+
+    doc += '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>' +
+      '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="851" w:footer="992" w:gutter="0"/>' +
+      '</w:sectPr></w:body></w:document>';
+
+    var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+      '<w:docDefaults><w:rPrDefault><w:rPr>' +
+      '<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:eastAsia="宋体" w:cs="Times New Roman"/>' +
+      '<w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:rPrDefault>' +
+      '<w:pPrDefault><w:pPr><w:spacing w:line="360" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr></w:pPrDefault>' +
+      '</w:docDefaults>' +
+      '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>' +
+      '</w:styles>';
+
+    var contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+      '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+      '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
+      '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
+      '</Types>';
+
+    var rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+      '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
+      '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>' +
+      '</Relationships>';
+
+    var docRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+      '</Relationships>';
+
+    var core = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ' +
+      'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" ' +
+      'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
+      '<dc:title>' + esc(t) + '</dc:title>' +
+      '<dc:creator>软考论文写作助手</dc:creator>' +
+      '<cp:lastModifiedBy>软考论文写作助手</cp:lastModifiedBy>' +
+      '<dcterms:created xsi:type="dcterms:W3CDTF">' + now + '</dcterms:created>' +
+      '<dcterms:modified xsi:type="dcterms:W3CDTF">' + now + '</dcterms:modified>' +
+      '</cp:coreProperties>';
+
+    var app = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" ' +
+      'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">' +
+      '<Application>软考论文写作助手</Application></Properties>';
+
+    return makeZip([
+      { name: "[Content_Types].xml", data: contentTypes },
+      { name: "_rels/.rels",         data: rels },
+      { name: "docProps/core.xml",   data: core },
+      { name: "docProps/app.xml",    data: app },
+      { name: "word/_rels/document.xml.rels", data: docRels },
+      { name: "word/document.xml",   data: doc },
+      { name: "word/styles.xml",     data: styles }
+    ]);
+  }
+
+  /* ================= 导出 ================= */
+  function pad2(n){ return n < 10 ? "0" + n : "" + n; }
+
+  function exportDocx(){
+    var title = elTitle.value.trim();
+    var absText = elAbs.value;
+    var bodyText = elBody.value;
+    if(!absText.trim() && !bodyText.trim()){
+      toast("内容还是空的，先写点什么吧", true);
+      return;
+    }
+    try{
+      var blob = buildDocx(title, absText, bodyText);
+      var d = new Date();
+      var stamp = d.getFullYear() + pad2(d.getMonth()+1) + pad2(d.getDate());
+      var base = (title || "软考论文").replace(/[\\/:*?"<>|\s]/g, "").slice(0, 40) || "软考论文";
+      var a = document.createElement("a");
+      var url = URL.createObjectURL(blob);
+      a.href = url;
+      a.download = base + "_" + stamp + ".docx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+      toast("已导出 " + a.download);
+    }catch(err){
+      console.error(err);
+      toast("导出失败：" + err.message, true);
+    }
+  }
+
+  /* ================= 交互 ================= */
+  function toast(msg, isErr){
+    var t = $("toast");
+    t.textContent = msg;
+    t.className = "show" + (isErr ? " err" : "");
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function(){ t.className = ""; }, 2200);
+  }
+
+  function guard(ta, key){
+    if(!elHard.checked) return;
+    var max = RULES[key].max;
+    if(countChars(ta.value) > max){
+      var pos = ta.selectionStart;
+      ta.value = trimToMax(ta.value, max);
+      try{ ta.setSelectionRange(Math.min(pos, ta.value.length), Math.min(pos, ta.value.length)); }catch(e){}
+      toast(RULES[key].label + "已达上限 " + max + " 字", true);
+    }
+  }
+
+  var raf = null;
+  function onInput(key){
+    if(raf) return;
+    raf = requestAnimationFrame(function(){
+      raf = null;
+      if(key === "abs" || key === "absHard") guard(elAbs, "abs");
+      if(key === "body" || key === "bodyHard") guard(elBody, "body");
+      refresh();
+      scheduleAutoSave();
+    });
+  }
+
+  [elTitle, elAbs, elBody].forEach(function(el){
+    el.addEventListener("input", function(){ onInput(el === elAbs ? "abs" : el === elBody ? "body" : "other"); });
+  });
+
+  $("btnSave").addEventListener("click", function(){ saveDraft(false); });
+  $("btnExport").addEventListener("click", exportDocx);
+
+  $("btnCopy").addEventListener("click", function(){
+    var full = "【标题】" + (elTitle.value.trim() || "（未填写）") +
+      "\n\n【摘要】\n" + (elAbs.value.trim() || "（未填写）") +
+      "\n\n【正文】\n" + (elBody.value.trim() || "（未填写）");
+    var done = function(){ toast("全文已复制到剪贴板"); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(full).then(done, function(){ fallbackCopy(full, done); });
+    } else {
+      fallbackCopy(full, done);
+    }
+  });
+
+  function fallbackCopy(text, done){
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand("copy"); done(); }catch(e){ toast("复制失败，请手动选择", true); }
+    document.body.removeChild(ta);
+  }
+
+  $("btnClear").addEventListener("click", function(){
+    if(elAbs.value.trim() || elBody.value.trim() || elTitle.value.trim()){
+      if(!confirm("确定清空标题、摘要与正文吗？此操作不可撤销。")) return;
+    }
+    elTitle.value = ""; elAbs.value = ""; elBody.value = "";
+    try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+    lastSaved = snapshot();
+    $("saveState").textContent = "尚未保存";
+    refresh();
+    elTitle.focus();
+    toast("已清空");
+  });
+
+  document.addEventListener("keydown", function(e){
+    if(!(e.ctrlKey || e.metaKey)) return;
+    var k = e.key.toLowerCase();
+    if(k === "s" && e.shiftKey){ e.preventDefault(); exportDocx(); }
+    else if(k === "s"){ e.preventDefault(); saveDraft(false); }
+  });
+
+  window.addEventListener("beforeunload", function(){
+    if(snapshot() !== lastSaved) saveDraft(true);
+    persistTimer();
+  });
+
+  /* ================= 限时倒计时（默认 120 分钟，手动开始） ================= */
+  var T_KEY = "rk_essay_timer_v1";
+  var DEFAULT_MIN = 120;
+  var SEC = 1000;
+  var BASE_TITLE = document.title;
+
+  var timer = {
+    durMs: DEFAULT_MIN * 60 * SEC,
+    remainMs: DEFAULT_MIN * 60 * SEC,
+    running: false,
+    endAt: 0,
+    sound: true
+  };
+  var timerTick = null, timeUp = false, persistAt = 0, audioCtx = null;
+
+  function fmtSec(sec){
+    sec = Math.max(0, Math.round(sec));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? "0" + m : "" + m) + ":" + (s < 10 ? "0" + s : s);
+  }
+  // 剩余时间向上取整，保证最后一秒显示 00:01 而不是 00:00
+  function fmtClock(ms){ return fmtSec(Math.ceil(Math.max(0, ms) / SEC)); }
+
+  function renderTimer(){
+    var d = $("timerDisplay"), f = $("timerFill"), st = $("timerState"), btn = $("btnTimer");
+    var totalSec = Math.round(timer.durMs / SEC);
+    var leftSec = Math.max(0, Math.ceil(timer.remainMs / SEC));
+    var usedSec = Math.max(0, totalSec - leftSec);
+    var elapsed = Math.max(0, timer.durMs - timer.remainMs);
+    var untouched = (elapsed === 0 && !timer.running);
+    var cls = "timer-display";
+    if(timer.remainMs <= 0) cls += " done";
+    else if(untouched) cls += " idle";
+    else if(timer.remainMs <= 60000) cls += " danger";
+    else if(timer.remainMs <= 300000) cls += " warn";
+    d.className = cls;
+    d.textContent = fmtClock(timer.remainMs);
+
+    f.style.width = Math.min(100, elapsed / timer.durMs * 100).toFixed(2) + "%";
+    f.className = "fill " + (timer.remainMs <= 0 ? "over" : (timer.remainMs <= 300000 ? "under" : "ok"));
+
+    var text;
+    if(timer.remainMs <= 0) text = "时间到 · 请停笔自查";
+    else if(timer.running) text = "计时中 · 已用 " + fmtSec(usedSec);
+    else if(untouched) text = "未开始 · 点击「开始」后才计时";
+    else text = "已暂停 · 还剩 " + fmtClock(timer.remainMs);
+    st.textContent = text;
+    st.className = "timer-state" + (timer.remainMs <= 0 ? " done" : "");
+
+    btn.textContent = timer.running ? "暂停" : (timer.remainMs <= 0 ? "重新开始" : (untouched ? "开始" : "继续"));
+  }
+
+  function tick(){
+    if(!timer.running) return;
+    var prev = timer.remainMs;
+    timer.remainMs = timer.endAt - Date.now();
+    if(timer.remainMs <= 0){
+      timer.remainMs = 0;
+      timer.running = false;
+      stopTick();
+      fireTimeUp(false);
+    } else {
+      if(prev > 300000 && timer.remainMs <= 300000) toast("剩余 5 分钟");
+      if(prev > 60000 && timer.remainMs <= 60000) toast("剩余 1 分钟，注意收尾", true);
+    }
+    renderTimer();
+    if(Date.now() - persistAt > 4000){ persistAt = Date.now(); persistTimer(); }
+  }
+
+  function startTick(){ stopTick(); timerTick = setInterval(tick, 200); tick(); }
+  function stopTick(){ if(timerTick){ clearInterval(timerTick); timerTick = null; } }
+
+  function fireTimeUp(silent){
+    timeUp = true;
+    document.title = "⏰ 时间到 · 软考论文写作助手";
+    if(!silent){ toast("时间到，请停笔", true); beep(3); }
+    persistTimer();
+  }
+
+  function beep(times){
+    if(!timer.sound) return;
+    try{
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return;
+      if(!audioCtx) audioCtx = new AC();
+      if(audioCtx.state === "suspended") audioCtx.resume();
+      for(var i = 0; i < times; i++){
+        (function(idx){
+          var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+          var t0 = audioCtx.currentTime + idx * 0.45;
+          o.type = "sine";
+          o.frequency.setValueAtTime(880, t0);
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.32);
+          o.connect(g); g.connect(audioCtx.destination);
+          o.start(t0); o.stop(t0 + 0.34);
+        })(i);
+      }
+    }catch(e){}
+  }
+
+  function persistTimer(){
+    try{
+      localStorage.setItem(T_KEY, JSON.stringify({
+        durMs: timer.durMs, remainMs: timer.remainMs, running: timer.running,
+        endAt: timer.endAt, sound: timer.sound
+      }));
+    }catch(e){}
+  }
+
+  function restoreTimer(){
+    var s = null;
+    try{ s = JSON.parse(localStorage.getItem(T_KEY) || "null"); }catch(e){ s = null; }
+    if(!s) return;
+    if(typeof s.durMs === "number" && s.durMs >= 60000) timer.durMs = s.durMs;
+    timer.sound = s.sound !== false;
+    $("timerMin").value = Math.round(timer.durMs / 60000);
+    $("timerSound").checked = timer.sound;
+
+    if(s.running && typeof s.endAt === "number" && s.endAt > 0){
+      var left = s.endAt - Date.now();
+      if(left > 0){
+        timer.remainMs = left;
+        timer.endAt = s.endAt;
+        timer.running = true;
+        startTick();
+      } else {
+        timer.remainMs = 0;
+        fireTimeUp(true);
+      }
+      return;
+    }
+    timer.remainMs = (typeof s.remainMs === "number" && s.remainMs >= 0 && s.remainMs <= timer.durMs) ? s.remainMs : timer.durMs;
+    timer.running = false;
+  }
+
+  function resetTimerState(){
+    stopTick();
+    timer.running = false;
+    timer.remainMs = timer.durMs;
+    timer.endAt = 0;
+    timeUp = false;
+    document.title = BASE_TITLE;
+  }
+
+  $("btnTimer").addEventListener("click", function(){
+    if(timer.running){
+      timer.remainMs = Math.max(0, timer.endAt - Date.now());
+      timer.running = false;
+      stopTick();
+      renderTimer();
+      persistTimer();
+      toast("已暂停 · 还剩 " + fmtClock(timer.remainMs));
+      return;
+    }
+    if(timer.remainMs <= 0){
+      timer.remainMs = timer.durMs;
+      timeUp = false;
+      document.title = BASE_TITLE;
+    }
+    timer.endAt = Date.now() + timer.remainMs;
+    timer.running = true;
+    startTick();
+    renderTimer();
+    persistTimer();
+    toast("开始计时 · 共 " + Math.round(timer.durMs / 60000) + " 分钟");
+  });
+
+  $("btnTimerReset").addEventListener("click", function(){
+    var untouched = (timer.remainMs === timer.durMs && !timer.running);
+    if(!untouched && !confirm("确定重置倒计时吗？时间将恢复为 " + Math.round(timer.durMs / 60000) + " 分钟。")) return;
+    resetTimerState();
+    renderTimer();
+    persistTimer();
+    toast("倒计时已重置");
+  });
+
+  $("timerMin").addEventListener("change", function(){
+    var cur = Math.round(timer.durMs / 60000);
+    var v = parseInt(this.value, 10);
+    if(!isFinite(v)) v = cur;
+    v = Math.max(1, Math.min(600, v));
+    this.value = v;
+    if(v === cur) return;
+    if(timer.running && !confirm("正在计时，修改时长会重置倒计时，继续吗？")){ this.value = cur; return; }
+    timer.durMs = v * 60000;
+    resetTimerState();
+    renderTimer();
+    persistTimer();
+    toast("时长已设为 " + v + " 分钟");
+  });
+
+  $("timerSound").addEventListener("change", function(){
+    timer.sound = this.checked;
+    persistTimer();
+    if(this.checked) beep(1);
+  });
+
+  document.addEventListener("visibilitychange", function(){
+    if(!document.hidden && timer.running) tick();
+  });
+
+  /* ================= 初始化 ================= */
+  restore();          // 恢复本地草稿（若有）
+  refresh();
+  restoreTimer();     // 恢复倒计时状态（未开始过则保持 120:00 静止）
+  renderTimer();
+  elHard.addEventListener("change", function(){
+    if(elHard.checked){ guard(elAbs, "abs"); guard(elBody, "body"); refresh(); }
+    scheduleAutoSave();
+  });
+
+  // 自适应高度
+  function autoGrow(el, min, max){
+    el.style.height = "auto";
+    var h = Math.max(min, Math.min(max, el.scrollHeight));
+    el.style.height = h + "px";
+  }
+  function grow(){
+    autoGrow(elAbs, 120, 320);
+    autoGrow(elBody, 360, 900);
+  }
+  [elAbs, elBody].forEach(function(el){
+    el.addEventListener("input", function(){
+      el.style.height = "auto";
+      el.style.height = Math.max(el === elAbs ? 120 : 360, Math.min(el === elAbs ? 320 : 900, el.scrollHeight)) + "px";
+    });
+    el.addEventListener("focus", function(){ el.style.height = "auto"; });
+  });
+  // 初始高度（含草稿恢复后的长文本）
+  grow();
+  window.addEventListener("resize", grow);
+})();
+</script>
+</body>
+</html>
